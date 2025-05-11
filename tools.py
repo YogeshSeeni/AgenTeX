@@ -1,13 +1,14 @@
 from openai import OpenAI
 from dotenv import load_dotenv
 import os
+from models import ImageParser
+from agents import function_tool
 
-
-def parse_image(image_url: str) -> str:
+@function_tool
+def parse_image(image_url: str) -> ImageParser:
     load_dotenv()
 
     client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-
 
     response = client.responses.create(
         model="gpt-4.1-mini",
@@ -17,10 +18,14 @@ def parse_image(image_url: str) -> str:
                 {"type": "input_text", "text": "Describe this math problem in detailed english to later generate latex code"},
                 {
                     "type": "input_image",
-                    "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg",
+                    "image_url": image_url,
                 },
             ],
         }],
     )
 
-    print(response.output_text)
+    # Return a proper ImageParser object
+    return ImageParser(
+        is_valid=True,  # You might want to add validation logic here
+        text=response.output_text
+    )
