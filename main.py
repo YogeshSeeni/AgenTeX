@@ -23,15 +23,58 @@ image_parser_agent = Agent(
     model="gpt-4o"
 )
 
+latex_prompt = """
+You are an expert LaTeX code generator for KaTeX (Streamlit’s `st.latex`).  
+Your task is to take any plain-English description or raw math expression and return **only** the minimal, valid LaTeX snippet—nothing else. This output will be inserted directly into `st.latex()`, so do **not** wrap it in `$…$`, `\[…\]`, or add any explanatory text.
+
+Requirements:
+1. **KaTeX‐compatible** – Use only commands supported by KaTeX (see https://katex.org/docs/supported.html).  
+2. **No prose** – Output exactly the LaTeX code, no comments, no markdown fences.  
+3. **Basic constructs**  
+   - Fractions & roots: `\frac{num}{den}`, `\sqrt[root]{arg}`  
+   - Superscripts & subscripts: `x^{2}`, `a_{ij}`  
+   - Sums & integrals: `\sum_{i=0}^{n}`, `\int_{a}^{b}`  
+4. **Functions & operators**  
+   - Trig/log/exp: `\sin`, `\cos`, `\tan`, `\ln`, `\exp`, `\log`  
+   - Limits & differentials: `\lim_{x\to 0}`, include `\,` before `dx` if needed  
+5. **Symbols & Greek letters** – `\alpha`, `\beta`, `\Gamma`, `\partial`, `\infty`, etc.  
+6. **Environments** – Matrices and piecewise cases:  
+   ```
+   \begin{pmatrix} … \end{pmatrix}
+   \begin{cases} … \end{cases}
+   ```  
+7. **No custom macros** – Don’t define new commands or load packages.  
+
+Examples:
+- Input: “derivative of x squared times sin x”  
+  Output:  
+  ```
+  2x \sin x + x^2 \cos x
+  ```
+- Input: “integral from 0 to infinity of e to the minus x squared dx equals sqrt(pi) over 2”  
+  Output:  
+  ```
+  \int_{0}^{\infty} e^{-x^2}\,dx = \frac{\sqrt{\pi}}{2}
+  ```
+- Input: “matrix with entries a, b on first row and c, d on second row”  
+  Output:  
+  ```
+  \begin{pmatrix}
+    a & b\\
+    c & d
+  \end{pmatrix}
+  ```
+
+Now, convert the following into KaTeX‐valid LaTeX code (no extra text):
+> {{USER_INPUT}}
+
+"""
+
 # Agent #2: generates LaTeX code
 latex_generator_agent = Agent(
     name="LatexGeneratorAgent",
     instructions=(
-        "Do not solve the problem, just return the LaTeX translation of the problem."
-        "Convert the parsed text into LaTeX code. Ensure proper formatting and mathematical notation. "
-        "IMPORTANT: Transcribe all mathematical expressions exactly as provided in the input text without solving, "
-        "simplifying, or modifying them. Do not add any mathematical logic, interpretations, or attempt to solve equations. "
-        "Your task is purely to convert the text to proper LaTeX syntax while preserving the exact mathematical content verbatim."
+        latex_prompt
     ),
     output_type=LatexOutput,
     model="gpt-4o"

@@ -8,8 +8,16 @@ import tempfile
 from PIL import Image
 import io
 import base64
+import requests
+from urllib.parse import urlparse
+import agentops
 
 load_dotenv()
+
+agentops.init(os.getenv("AGENTOPS_API_KEY"))
+
+# Initialize OpenAI client
+client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
 st.set_page_config(page_title="LaTeX Image Parser", layout="wide")
 
@@ -21,11 +29,35 @@ if "parsed_text" not in st.session_state:
     st.session_state.parsed_text = ""
 if "latex_code" not in st.session_state:
     st.session_state.latex_code = ""
+if "error" not in st.session_state:
+    st.session_state.error = ""
+if "vision_response" not in st.session_state:
+    st.session_state.vision_response = ""
 
-# Create tabs for different input methods
-tab1, tab2 = st.tabs(["Upload Image", "Image URL"])
+# Function to call Vision API directly
+def call_vision_api(image_url):
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": "Describe this math problem in detailed english to later generate latex code."},
+                        {"type": "image_url", "image_url": {"url": image_url}}
+                    ]
+                }
+            ],
+            max_tokens=1000
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        st.session_state.error = f"Vision API error: {str(e)}"
+        raise e
 
 # Tab 1: Upload Image
+tab1, tab2 = st.tabs(["Upload Image", "Image URL"])
+
 with tab1:
     uploaded_file = st.file_uploader("Choose an image file", type=["jpg", "jpeg", "png"])
     
@@ -34,57 +66,114 @@ with tab1:
         st.image(uploaded_file, caption="Uploaded Image", use_column_width=True)
         
         if st.button("Process Uploaded Image", key="process_upload"):
+            st.session_state.error = ""
             with st.spinner("Processing image..."):
-                # Save the uploaded file to a temporary file
-                with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp_file:
-                    tmp_file.write(uploaded_file.getvalue())
-                    tmp_path = tmp_file.name
-                
-                # Create a data URL for the image
-                img_bytes = uploaded_file.getvalue()
-                encoded = base64.b64encode(img_bytes).decode()
-                mime_type = uploaded_file.type
-                img_url = f"data:{mime_type};base64,{encoded}"
-                print(img_url)
-                # Process the image
-                async def process_image():
-                    parsed_result = await Runner.run(image_parser_agent, img_url)
-                    st.session_state.parsed_text = parsed_result.final_output.text
+                try:
+                    # Save the uploaded file to a temporary file with proper extension
+                    file_extension = os.path.splitext(uploaded_file.name)[1].lower()
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension) as tmp_file:
+                        tmp_file.write(uploaded_file.getvalue())
+                        tmp_path = tmp_file.name
                     
-                    latex_result = await Runner.run(latex_generator_agent, st.session_state.parsed_text)
-                    st.session_state.latex_code = latex_result.final_output.latex_code
+                    try:
+                        # For local files, we need to create a data URL
+                        with open(tmp_path, "rb") as image_file:
+                            encoded_string = base64.b64encode(image_file.read()).decode("utf-8")
+                        
+                        mime_type = f"image/{file_extension[1:]}"  # Remove the dot from extension
+                        img_url = f"data:{mime_type};base64,{encoded_string}"
+                        
+                        # Call Vision API directly
+                        vision_response = call_vision_api(img_url)
+                        st.session_state.vision_response = vision_response
+                        
+                        # Show the Vision API response
+                        st.subheader("Vision API Response")
+                        st.text_area("Raw Vision Response", vision_response, height=150)
+                        
+                        # Process with agents
+                        async def process_with_agents():
+                            try:
+                                # Use the vision response as input to latex_generator_agent
+                                latex_result = await Runner.run(latex_generator_agent, vision_response)
+                                st.session_state.latex_code = latex_result.final_output.latex_code
+                                st.session_state.parsed_text = vision_response  # Set parsed text to the vision response
+                            except Exception as e:
+                                st.session_state.error = f"Agent processing error: {str(e)}"
+                                raise e
+                        
+                        # Run the async function
+                        asyncio.run(process_with_agents())
+                        
+                    except Exception as e:
+                        st.session_state.error = f"Error during image processing: {str(e)}"
+                        raise e
+                    finally:
+                        # Clean up temporary file
+                        if os.path.exists(tmp_path):
+                            os.unlink(tmp_path)
+                    
+                    if not st.session_state.error:
+                        st.success("Processing complete!")
                 
-                # Run the async function
-                asyncio.run(process_image())
-                
-                # Clean up temporary file
-                os.unlink(tmp_path)
-                
-                st.success("Processing complete!")
+                except Exception as e:
+                    st.error(f"Error processing image: {str(e)}")
+                    st.session_state.error = str(e)
 
 # Tab 2: Image URL
 with tab2:
     image_url = st.text_input("Enter image URL:")
     
     if image_url:
-        st.image(image_url, caption="Image from URL", use_column_width=True)
+        try:
+            # Verify the URL is valid
+            parsed_url = urlparse(image_url)
+            is_valid = all([parsed_url.scheme, parsed_url.netloc])
+            
+            if is_valid:
+                st.image(image_url, caption="Image from URL", use_column_width=True)
+            else:
+                st.warning("Please enter a valid image URL")
+        except Exception:
+            st.warning("Could not load image from URL")
         
         if st.button("Process Image URL", key="process_url"):
+            st.session_state.error = ""
             with st.spinner("Processing image..."):
-                # Process the image
-                async def process_image_url():
-                    parsed_result = await Runner.run(image_parser_agent, image_url)
-                    st.session_state.parsed_text = parsed_result.final_output.text
+                try:
+                    # Call Vision API directly
+                    vision_response = call_vision_api(image_url)
+                    st.session_state.vision_response = vision_response
                     
-                    latex_result = await Runner.run(latex_generator_agent, st.session_state.parsed_text)
-                    st.session_state.latex_code = latex_result.final_output.latex_code
+                    # Show the Vision API response
+                    st.subheader("Vision API Response")
+                    st.text_area("Raw Vision Response", vision_response, height=150)
+                    
+                    # Process with agents
+                    async def process_with_agents():
+                        try:
+                            # Use the vision response as input to latex_generator_agent
+                            latex_result = await Runner.run(latex_generator_agent, vision_response)
+                            st.session_state.latex_code = latex_result.final_output.latex_code
+                            st.session_state.parsed_text = vision_response  # Set parsed text to the vision response
+                        except Exception as e:
+                            st.session_state.error = f"Agent processing error: {str(e)}"
+                            raise e
+                    
+                    # Run the async function
+                    asyncio.run(process_with_agents())
+                    
+                    if not st.session_state.error:
+                        st.success("Processing complete!")
                 
-                # Run the async function
-                asyncio.run(process_image_url())
-                
-                st.success("Processing complete!")
+                except Exception as e:
+                    st.error(f"Error processing image: {str(e)}")
+                    st.session_state.error = str(e)
 
 # Display results
+if st.session_state.error:
+    st.error(f"Error: {st.session_state.error}")
+
 if st.session_state.parsed_text or st.session_state.latex_code:
     col1, col2 = st.columns(2)
     
