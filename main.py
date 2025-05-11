@@ -12,7 +12,11 @@ load_dotenv()
 image_parser_agent = Agent(
     name="ImageParserAgent",
     instructions=(
-        "Parse the image and return a JSON object with 'is_valid' and 'text' fields."
+        "Parse the image containing mathematical content and return a JSON object with 'is_valid' and 'text' fields. "
+        "IMPORTANT: Transcribe all mathematical expressions exactly as they appear in the image without solving, "
+        "simplifying, or modifying them. Do not add any mathematical logic or attempt to solve equations. "
+        "Your task is purely to convert the visual content to text accurately with all symbols and expressions preserved verbatim."
+        "Do not add any commentary or formatting or solve the problem."
     ),
     output_type=ImageParser,
     tools=[parse_image],
@@ -23,7 +27,11 @@ image_parser_agent = Agent(
 latex_generator_agent = Agent(
     name="LatexGeneratorAgent",
     instructions=(
-        "Convert the parsed text into LaTeX code. Ensure proper formatting and mathematical notation."
+        "Do not solve the problem, just return the LaTeX translation of the problem."
+        "Convert the parsed text into LaTeX code. Ensure proper formatting and mathematical notation. "
+        "IMPORTANT: Transcribe all mathematical expressions exactly as provided in the input text without solving, "
+        "simplifying, or modifying them. Do not add any mathematical logic, interpretations, or attempt to solve equations. "
+        "Your task is purely to convert the text to proper LaTeX syntax while preserving the exact mathematical content verbatim."
     ),
     output_type=LatexOutput,
     model="gpt-4o"

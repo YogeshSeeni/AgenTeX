@@ -45,7 +45,7 @@ with tab1:
                 encoded = base64.b64encode(img_bytes).decode()
                 mime_type = uploaded_file.type
                 img_url = f"data:{mime_type};base64,{encoded}"
-                
+                print(img_url)
                 # Process the image
                 async def process_image():
                     parsed_result = await Runner.run(image_parser_agent, img_url)
@@ -104,12 +104,7 @@ if st.session_state.parsed_text or st.session_state.latex_code:
         # LaTeX Preview section
         st.subheader("LaTeX Preview")
         try:
-            st.markdown(f"$${st.session_state.latex_code}$$")
+            st.latex(st.session_state.latex_code)
             st.info("Note: Preview may not render complex LaTeX perfectly. Please use a dedicated LaTeX editor for final results.")
         except Exception as e:
             st.error(f"Could not render LaTeX preview: {str(e)}")
-
-# Add information about how to run the app
-st.markdown("---")
-st.markdown("### How to run this app")
-st.code("streamlit run app.py", language="bash") 
