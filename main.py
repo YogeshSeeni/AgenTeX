@@ -1,12 +1,14 @@
 from openai import OpenAI
 from dotenv import load_dotenv
 import os
-from agents import Agent, Runner
-from models import ImageParser
+from agents import Agent, Runner, trace
+from models import ImageParser, LatexOutput
 from tools import parse_image
+import asyncio
+
 load_dotenv()
 
-# Agent #1: generates code
+# Agent #1: parses image
 image_parser_agent = Agent(
     name="ImageParserAgent",
     instructions=(
@@ -17,10 +19,30 @@ image_parser_agent = Agent(
     model="gpt-4o"
 )
 
+# Agent #2: generates LaTeX code
+latex_generator_agent = Agent(
+    name="LatexGeneratorAgent",
+    instructions=(
+        "Convert the parsed text into LaTeX code. Ensure proper formatting and mathematical notation."
+    ),
+    output_type=LatexOutput,
+    model="gpt-4o"
+)
+
 # Example image URL - replace with your actual image URL
 image_url = "https://www.firstforwomen.com/wp-content/uploads/sites/2/2018/02/math-iq-test.jpg?w=750&h=562&crop=1&quality=86&strip=all"
 
-# Run the agent using Runner
-result = Runner.run_sync(image_parser_agent, image_url)
-print("Parsed result:", result.final_output)
 
+
+async def main():
+    with trace("Deterministic flow"):
+        # Run the agents in sequence
+        parsed_result = await Runner.run(image_parser_agent, image_url)
+        print("Parsed result:", parsed_result.final_output.text)
+
+        # Generate LaTeX code from the parsed text
+        latex_result = await Runner.run(latex_generator_agent, parsed_result.final_output.text)
+        print("Generated LaTeX:", latex_result.final_output.latex_code)
+
+if __name__ == "__main__":
+    asyncio.run(main())
