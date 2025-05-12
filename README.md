@@ -4,7 +4,7 @@ A sophisticated tool that uses AI agents to parse images containing mathematical
 
 ## 📜 Overview
 
-Latex_Agents is an advanced tool that leverages OpenAI's powerful GPT-4o model to:
+AgenTeX is an advanced tool that leverages OpenAI's powerful GPT-4o model to:
 
 - Parse images containing mathematical equations
 - Classify mathematical content by type and difficulty
@@ -53,8 +53,8 @@ The system is built using a multi-agent architecture with specialized AI agents:
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/Latex_Agents.git
-   cd Latex_Agents
+   git clone https://github.com/yourusername/AgenTeX.git
+   cd AgenTeX
    ```
 
 2. Create and activate a virtual environment (optional but recommended):
