@@ -1,4 +1,4 @@
-# Latex_Agents
+# AgenTeX
 
 A sophisticated tool that uses AI agents to parse images containing mathematical content and convert them to LaTeX code, with additional features for mathematical analysis and step-by-step solutions.
 
