@@ -3,7 +3,7 @@ from openai import OpenAI
 from dotenv import load_dotenv
 import os
 import asyncio
-from main import image_parser_agent, latex_generator_agent, Runner
+from main import image_parser_agent, latex_generator_agent, math_classifier_agent, solution_generator_agent, Runner
 import tempfile
 from PIL import Image
 import io
@@ -33,6 +33,10 @@ if "error" not in st.session_state:
     st.session_state.error = ""
 if "vision_response" not in st.session_state:
     st.session_state.vision_response = ""
+if "math_classification" not in st.session_state:
+    st.session_state.math_classification = None
+if "math_solution" not in st.session_state:
+    st.session_state.math_solution = None
 
 # Function to call Vision API directly
 def call_vision_api(image_url):
@@ -98,6 +102,14 @@ with tab1:
                                 latex_result = await Runner.run(latex_generator_agent, vision_response)
                                 st.session_state.latex_code = latex_result.final_output.latex_code
                                 st.session_state.parsed_text = vision_response  # Set parsed text to the vision response
+                                
+                                # Additional insights with new agents
+                                classification_result = await Runner.run(math_classifier_agent, vision_response)
+                                st.session_state.math_classification = classification_result.final_output
+                                
+                                solution_result = await Runner.run(solution_generator_agent, vision_response)
+                                st.session_state.math_solution = solution_result.final_output
+                                
                             except Exception as e:
                                 st.session_state.error = f"Agent processing error: {str(e)}"
                                 raise e
@@ -156,6 +168,14 @@ with tab2:
                             latex_result = await Runner.run(latex_generator_agent, vision_response)
                             st.session_state.latex_code = latex_result.final_output.latex_code
                             st.session_state.parsed_text = vision_response  # Set parsed text to the vision response
+                            
+                            # Additional insights with new agents
+                            classification_result = await Runner.run(math_classifier_agent, vision_response)
+                            st.session_state.math_classification = classification_result.final_output
+                            
+                            solution_result = await Runner.run(solution_generator_agent, vision_response)
+                            st.session_state.math_solution = solution_result.final_output
+                            
                         except Exception as e:
                             st.session_state.error = f"Agent processing error: {str(e)}"
                             raise e
@@ -186,6 +206,14 @@ with tab3:
                         latex_result = await Runner.run(latex_generator_agent, user_text_input)
                         st.session_state.latex_code = latex_result.final_output.latex_code
                         st.session_state.parsed_text = user_text_input  # Set parsed text to the user input
+                        
+                        # Additional insights with new agents
+                        classification_result = await Runner.run(math_classifier_agent, user_text_input)
+                        st.session_state.math_classification = classification_result.final_output
+                        
+                        solution_result = await Runner.run(solution_generator_agent, user_text_input)
+                        st.session_state.math_solution = solution_result.final_output
+                        
                     except Exception as e:
                         st.session_state.error = f"Agent processing error: {str(e)}"
                         raise e
@@ -205,25 +233,66 @@ if st.session_state.error:
     st.error(f"Error: {st.session_state.error}")
 
 if st.session_state.parsed_text or st.session_state.latex_code:
-    col1, col2 = st.columns(2)
+    results_tab1, results_tab2, results_tab3 = st.tabs(["LaTeX Output", "Math Classification", "Step-by-Step Solution"])
     
-    with col1:
-        st.subheader("Parsed Text")
-        st.text_area("Extracted Text", st.session_state.parsed_text, height=300)
+    # Tab 1: LaTeX Output
+    with results_tab1:
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("Parsed Text")
+            st.text_area("Extracted Text", st.session_state.parsed_text, height=300)
+        
+        with col2:
+            st.subheader("Generated LaTeX")
+            st.text_area("LaTeX Code", st.session_state.latex_code, height=300)
+            
+            # Add a button to copy LaTeX code to clipboard
+            st.code(st.session_state.latex_code, language="latex")
+            st.button("Copy LaTeX to Clipboard", 
+                    on_click=lambda: st.session_state.update({"clipboard": st.session_state.latex_code}))
+            
+            # LaTeX Preview section
+            st.subheader("LaTeX Preview")
+            try:
+                st.latex(st.session_state.latex_code)
+                st.info("Note: Preview may not render complex LaTeX perfectly. Please use a dedicated LaTeX editor for final results.")
+            except Exception as e:
+                st.error(f"Could not render LaTeX preview: {str(e)}")
     
-    with col2:
-        st.subheader("Generated LaTeX")
-        st.text_area("LaTeX Code", st.session_state.latex_code, height=300)
-        
-        # Add a button to copy LaTeX code to clipboard
-        st.code(st.session_state.latex_code, language="latex")
-        st.button("Copy LaTeX to Clipboard", 
-                 on_click=lambda: st.session_state.update({"clipboard": st.session_state.latex_code}))
-        
-        # LaTeX Preview section
-        st.subheader("LaTeX Preview")
-        try:
-            st.latex(st.session_state.latex_code)
-            st.info("Note: Preview may not render complex LaTeX perfectly. Please use a dedicated LaTeX editor for final results.")
-        except Exception as e:
-            st.error(f"Could not render LaTeX preview: {str(e)}")
+    # Tab 2: Math Classification
+    with results_tab2:
+        if st.session_state.math_classification:
+            st.subheader("Mathematical Classification")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown(f"**Type:** {st.session_state.math_classification.math_type}")
+                st.markdown(f"**Difficulty Level:** {st.session_state.math_classification.difficulty_level}")
+                
+                st.markdown("**Key Concepts:**")
+                for concept in st.session_state.math_classification.concepts:
+                    st.markdown(f"- {concept}")
+            
+            with col2:
+                st.markdown("**Description:**")
+                st.markdown(st.session_state.math_classification.description)
+        else:
+            st.info("No classification data available yet. Process some content to see mathematical classification.")
+    
+    # Tab 3: Step-by-Step Solution
+    with results_tab3:
+        if st.session_state.math_solution:
+            st.subheader("Solution Approach")
+            
+            st.markdown("### Step-by-Step Solution:")
+            for i, step in enumerate(st.session_state.math_solution.solution_steps):
+                st.markdown(f"**Step {i+1}:** {step}")
+            
+            st.markdown("### Final Answer:")
+            st.markdown(st.session_state.math_solution.final_answer)
+            
+            st.markdown("### Explanation:")
+            st.markdown(st.session_state.math_solution.explanation)
+        else:
+            st.info("No solution data available yet. Process a mathematical problem to see step-by-step solutions.")

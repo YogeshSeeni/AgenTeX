@@ -10,7 +10,6 @@ Latex_Agents is an advanced tool that leverages OpenAI's powerful GPT-4o model t
 - Classify mathematical content by type and difficulty
 - Generate LaTeX code for mathematical expressions
 - Provide step-by-step solutions to mathematical problems
-- Perform quality assurance on generated LaTeX code
 
 The application offers both a command-line interface and a user-friendly web interface built with Streamlit.
 
@@ -25,8 +24,8 @@ The application offers both a command-line interface and a user-friendly web int
   - Mathematical content parsing from images
   - Classification of mathematical type and difficulty level
   - Step-by-step problem solutions
-  - High-quality LaTeX code generation
-  - LaTeX code validation and quality assurance
+  - High-quality LaTeX code generation optimized for KaTeX
+  - LaTeX preview right in the web interface
 
 - **User-friendly interfaces**:
   - Simple command-line interface
@@ -37,12 +36,10 @@ The application offers both a command-line interface and a user-friendly web int
 
 The system is built using a multi-agent architecture with specialized AI agents:
 
-1. **Image Parser Agent**: Extracts mathematical content from images
+1. **Image Parser Agent**: Extracts mathematical content from images using GPT-4o vision capabilities
 2. **Math Classifier Agent**: Categorizes the mathematical content and assesses difficulty
 3. **Solution Generator Agent**: Provides step-by-step solutions to problems
-4. **LaTeX Generator Agent**: Converts mathematical expressions to LaTeX code
-5. **Quality Assurance Agent**: Validates and improves the generated LaTeX
-6. **Triage Agent**: Routes input to the appropriate processing pipeline
+4. **LaTeX Generator Agent**: Converts mathematical expressions to LaTeX code optimized for KaTeX
 
 ## 🚀 Installation
 
@@ -107,8 +104,8 @@ The application will process your input and display:
 - The parsed mathematical content
 - Classification of the mathematical type and difficulty
 - Step-by-step solution (if applicable)
-- Generated LaTeX code
-- Quality assessment of the LaTeX code
+- Generated LaTeX code with a preview
+- Key concepts involved in the mathematical content
 
 ## 🧩 Dependencies
 
@@ -127,7 +124,7 @@ The project relies on the following key Python packages:
 2. Image Parser Agent extracts the text "x = (-b ± √(b² - 4ac)) / 2a"
 3. Math Classifier Agent identifies it as algebra (category) and easy (difficulty)
 4. LaTeX Generator Agent converts it to `x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}`
-5. Quality Assurance Agent validates the LaTeX code
+5. Solution Generator Agent provides step-by-step solution if applicable
 6. The web interface displays the results with rendered LaTeX
 
 ## 🤝 Contributing
