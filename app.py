@@ -56,7 +56,7 @@ def call_vision_api(image_url):
         raise e
 
 # Tab 1: Upload Image
-tab1, tab2 = st.tabs(["Upload Image", "Image URL"])
+tab1, tab2, tab3 = st.tabs(["Upload Image", "Image URL", "Text Input"])
 
 with tab1:
     uploaded_file = st.file_uploader("Choose an image file", type=["jpg", "jpeg", "png"])
@@ -169,6 +169,36 @@ with tab2:
                 except Exception as e:
                     st.error(f"Error processing image: {str(e)}")
                     st.session_state.error = str(e)
+
+# Tab 3: Direct Text Input
+with tab3:
+    st.markdown("Enter your mathematical expression or description directly:")
+    user_text_input = st.text_area("Mathematical Text", height=150)
+    
+    if st.button("Generate LaTeX", key="process_text"):
+        st.session_state.error = ""
+        with st.spinner("Generating LaTeX..."):
+            try:
+                # Process with latex generator agent
+                async def process_text_with_agent():
+                    try:
+                        # Use the user text as input to latex_generator_agent
+                        latex_result = await Runner.run(latex_generator_agent, user_text_input)
+                        st.session_state.latex_code = latex_result.final_output.latex_code
+                        st.session_state.parsed_text = user_text_input  # Set parsed text to the user input
+                    except Exception as e:
+                        st.session_state.error = f"Agent processing error: {str(e)}"
+                        raise e
+                
+                # Run the async function
+                asyncio.run(process_text_with_agent())
+                
+                if not st.session_state.error:
+                    st.success("LaTeX generation complete!")
+            
+            except Exception as e:
+                st.error(f"Error generating LaTeX: {str(e)}")
+                st.session_state.error = str(e)
 
 # Display results
 if st.session_state.error:
